@@ -1,0 +1,2 @@
+# LambdaAtomicCounter
+Serverless atomic counter
