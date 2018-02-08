@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+    TableNameParam:
+      Type: String
+Description:
+  Lambda Atomic Counter
+Resources:
+  LambdaAtomicCounterRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal:
+                Service:
+                  - "lambda.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        Path: "/"
+        Policies:
+        - PolicyName:
+            Fn::Join:
+            - "-"
+            - - Ref: AWS::StackName
+              - UseDBPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - dynamodb:DeleteItem
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+              Resource: 'arn:aws:dynamodb:*'
+            - Effect: Allow
+              Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              Resource: "*"
+
+  LambdaAtomicCounter:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs6.10
+      CodeUri: .
+      Description: >-
+        Atomic counter.
+      MemorySize: 512
+      Timeout: 10
+      Role: !GetAtt
+        - LambdaAtomicCounterRole
+        - Arn
+      Environment:
+       Variables:
+         TABLENAME: !Ref TableNameParam
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            Path: /AtomicCounter
+            Method: ANY
+
+  LambdaAtomicCounterPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - LambdaAtomicCounter
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
